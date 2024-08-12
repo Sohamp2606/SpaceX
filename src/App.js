@@ -8,13 +8,17 @@ function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // -->>  for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [postsPerPage, setPostsPerPage] = useState(5);
+
   useEffect(function () {
     async function fetchMovies() {
       try {
         setIsLoading(true);
         setError("");
 
-        const res = await fetch(`https://api.spacexdata.com/v3/launches/past`);
+        const res = await fetch(`https://api.spacexdata.com/v3/launches/past?order=desc`);
         const res2 = await fetch(
           `https://api.spacexdata.com/v3/launches/upcoming`
         );
@@ -29,6 +33,7 @@ function App() {
           throw new Error("Launch not found");
 
         const combineData = [...data, ...data2];
+        combineData.sort((a,b)=> a.mission_name - b.mission_name )
 
         console.log(data2);
         setLaunches(combineData);
@@ -61,6 +66,10 @@ function App() {
     (launch) => launch.flight_number === selectedId
   );
 
+  const handlePagination = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
   return (
     <>
       <NavBar>
@@ -79,7 +88,15 @@ function App() {
                 onSelect={setSelectedId}
               />
             ) : (
-              <LaunchList launches={launches} onSelect={setSelectedId} />
+              <>
+                
+                <Pagination
+                  length={launches.length}
+                  postsPerPage={postsPerPage}
+                  handlePagination={handlePagination}
+                />
+                <LaunchList launches={launches} onSelect={setSelectedId} />
+              </>
             ))}
 
           {error && <ErrorMessage message={error} />}
@@ -88,11 +105,26 @@ function App() {
       </Main>
 
       <Footer />
-
-      
     </>
   );
 }
+
+// -->>  pagination
+const Pagination = ({ postsPerPage, length }) => {
+  const paginationNumbers = [];
+
+  for (let i = 1; i <= Math.ceil(length / postsPerPage); i++) {
+    paginationNumbers.push(i);
+  }
+
+  return (
+    <div className="pagination">
+      {paginationNumbers.map((pageNumber) => (
+        <button key={pageNumber}>{pageNumber}</button>
+      ))}
+    </div>
+  );
+};
 
 // -->>  nav bar component
 function NavBar({ children }) {
@@ -141,6 +173,7 @@ function LaunchList({ launches, onSelect }) {
       {launches?.map((launch) => (
         <Launch
           key={launch.flight_number}
+          // flightNumber = {launch.flight_number}
           missionName={launch.mission_name}
           launchDate={launch.launch_date_local}
           launchSite={launch.launch_site.site_name_long}
@@ -164,6 +197,7 @@ function Launch({ missionName, launchDate, launchSite, upcoming, onClick }) {
           {upcoming ? <span>Upcoming..</span> : <span>{dateOnly}</span>}
           <span>📌</span>
           <span>{launchSite}</span>
+          
         </p>
       </div>
     </li>
@@ -183,6 +217,8 @@ function LaunchDetails({ launch }) {
         <p>
           &bull; {dateOnly} &bull; {launch.launch_site.site_name_long}
         </p>
+        <p>flight Number : {launch.flight_number
+        }</p>
         <p>Rocket : {launch.rocket.rocket_name}</p>
         <p>
           Payload : {launch.rocket.second_stage.payloads[0].payload_mass_kg} kg{" "}
